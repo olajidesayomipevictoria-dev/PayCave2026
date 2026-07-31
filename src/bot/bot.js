@@ -14,6 +14,7 @@ const flutterwave = require("./../services/flutterwave");
 
 const dataHandler = require("./handlers/data");
 const airtimeHandler = require("./handlers/airtime");
+
 const electricityHandler = require("./handlers/electricity");
 const cableHandler = require("./handlers/cable");
 const educationHandler = require("./handlers/education");
@@ -151,6 +152,7 @@ console.log("Wallet Balance:", balance);
         phone,
         amount
     );
+    console.log("PairGate Response:", purchase);
 
     if (!purchase.success) {
 
@@ -272,28 +274,30 @@ ${purchase.requestId}`
 
       break;
     case "📱 Buy Data":
-      clearState(msg.from.id);
-      clearState(msg.from.id);
+          setState(msg.from.id, {
+                  state: "data_network"
+                      });
 
-      bot.sendMessage(
-        msg.chat.id,
-        "📱 Select Network",
-        keyboards.DATA_NETWORKS
-      );
+                          bot.sendMessage(
+                                  msg.chat.id,
+                                          "📶 Select Network",
+                                                  keyboards.DATA_NETWORKS
+                                                      );
 
-      break;
+                                                          break;
 
     case "📞 Airtime":
-      clearState(msg.from.id);
-      clearState(msg.from.id);
+          setState(msg.from.id, {
+                  state: "airtime_network"
+                      });
 
-      bot.sendMessage(
-        msg.chat.id,
-        "📞 Select Network",
-        keyboards.AIRTIME_NETWORKS
-      );
+                          bot.sendMessage(
+                                  msg.chat.id,
+                                          "📞 Select Network",
+                                                  keyboards.AIRTIME_NETWORKS
+                                                      );
 
-      break;
+                                                          break;
 
     case "⚡ Electricity":
       clearState(msg.from.id);
@@ -349,20 +353,57 @@ ${purchase.requestId}`
       );
 
       break;
-    case "MTN":
-      airtimeHandler.startAirtime(bot, msg, "01");
-      break;
+ 
+  case "MTN":
+        if (state?.state === "data_network") {
+                await dataHandler.startData(bot, msg, "mtn");
+                    } else {
+                            await airtimeHandler.startAirtime(bot, msg, "mtn");
+                                }
+                                break;
+                                  
 
-      break;
+                                
 
-    case "Airtel":
-      airtimeHandler.startAirtime(bot, msg, "04");
-      break;
+                                   case "Airtel":
+                                        if (state?.state === "data_network") {
+                                                await dataHandler.startData(bot, msg, "airtel");
+                                                    } else {
+                                                            await airtimeHandler.startAirtime(bot, msg, "airtel");
+                                                                }
+                                                                    break;                     
 
-    case "Glo":
-      airtimeHandler.startAirtime(bot, msg, "02");
-      break;
+                                                                                  
 
+                                                                                                            
+
+                                                                                                            case "Glo":
+                                                                                                                  if (state?.state === "data_network") {
+                                                                                                                          await dataHandler.startData(bot, msg, "glo");
+                                                                                                                              } else {
+                                                                                                                                      await airtimeHandler.startAirtime(bot, msg, "glo");
+                                                                                                                                          }
+                                                                                                                                              break;
+
+                                                                                                                                    
+
+                                                                                                                                                                
+
+case "🏢 Corporate Gifting":
+      await dataHandler.startPlans(bot, msg, "CG");
+          break;
+
+          case "💼 SME":
+              await dataHandler.startPlans(bot, msg, "SME");
+                  break;
+
+                  case "🎁 Gifting":
+                      await dataHandler.startPlans(bot, msg, "GIFTING");
+                          break;
+
+                          case "🔥 Awoof":
+                              await dataHandler.startPlans(bot, msg, "AWOOF");
+                                  break;
     case "WAEC":
       bot.sendMessage(
         msg.chat.id,

@@ -1,7 +1,7 @@
 'use strict';
 
 const { setState, getState, clearState } = require('../../utils/states');
-const clubkonnect = require('../../services/clubkonnect');
+const pairgate = require('../../services/datastation');
 
 const airtimeSessions = {};
 
@@ -112,11 +112,11 @@ NO → Cancel`,
 // THIS IS THE MISSING FUNCTION
 async function buyAirtime(msg, network, phone, amount) {
 
-    return await clubkonnect.buyAirtime(
+    return await pairgate.buyAirtime(
         network,
-        phone,
-        amount
-    );
+            phone,
+                amount
+                );
 
 }
 
