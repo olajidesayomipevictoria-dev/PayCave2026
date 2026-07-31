@@ -1,0 +1,33 @@
+{
+      "name": "paycave-v2",
+      "version": "2.0.0",
+      "description": "PayCave Telegram Wallet & VTU Bot",
+      "main": "src/index.js",
+      "scripts": {
+            "start": "node src/index.js",
+            "dev": "nodemon src/index.js"
+      },
+      "keywords": [
+            "telegram",
+            "paycave",
+            "flutterwave",
+            "clubkonnect",
+            "wallet",
+            "vtu"
+      ],
+      "author": "PayCave",
+      "license": "MIT",
+      "dependencies": {
+            "axios": "^1.19.0",
+            "body-parser": "^2.2.0",
+            "cors": "^2.8.5",
+            "dotenv": "^17.2.1",
+            "express": "^5.1.0",
+            "node-telegram-bot-api": "^0.66.0",
+            "sqlite3": "^5.1.7",
+            "uuid": "^11.1.1"
+      },
+      "devDependencies": {
+            "nodemon": "^3.1.10"
+      }
+}
