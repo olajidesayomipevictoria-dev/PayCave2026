@@ -62,6 +62,12 @@ async function handleMessage(bot, msg) {
     // AMOUNT
     if (state.state === "awaiting_airtime_amount") {
 
+        // Check for Back or Home navigation buttons before parsing number
+        if (msg.text && (msg.text.includes("Back") || msg.text.includes("Home") || msg.text === "/start")) {
+            clearState(msg.from.id);
+            return false;
+        }
+
         const amount = Number(msg.text);
 
         if (isNaN(amount) || amount < 50) {
@@ -99,6 +105,25 @@ NO → Cancel`,
         setState(msg.from.id, "awaiting_airtime_confirmation");
 
         return true;
+    }
+
+    // CONFIRMATION
+    if (state.state === "awaiting_airtime_confirmation") {
+        const text = msg.text ? msg.text.trim().toLowerCase() : "";
+        
+        if (text === "yes") {
+            // Grab details from state data and execute purchase
+            await buyAirtime(msg, state.data.network, state.data.phone, state.data.amount);
+            clearState(msg.from.id);
+            return true;
+        } else if (text === "no") {
+            clearState(msg.from.id);
+            await bot.sendMessage(msg.chat.id, "❌ Airtime purchase cancelled.");
+            return true;
+        } else {
+            await bot.sendMessage(msg.chat.id, "❌ I didn't understand that. Please reply with YES or NO.");
+            return true;
+        }
     }
 
     return false;
