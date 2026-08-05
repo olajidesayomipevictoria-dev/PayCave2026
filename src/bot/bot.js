@@ -9,487 +9,615 @@ const db = require("../database/database");
 const keyboards = require("./keyboards");
 
 const wallet = require("./handlers/wallet");
+const flutterwave = require("../services/flutterwave");
 
-const flutterwave = require("./../services/flutterwave");
-
-const dataHandler = require("./handlers/data");
 const airtimeHandler = require("./handlers/airtime");
-
-const electricityHandler = require("./handlers/electricity");
-const cableHandler = require("./handlers/cable");
+const dataHandler = require("./handlers/data");
 const educationHandler = require("./handlers/education");
 const transactionHandler = require("./handlers/transactions");
 const adminHandler = require("./handlers/admin");
 
-const { setState, getState, clearState } = require("../utils/states");
+const {
+    setState,
+    getState,
+    clearState
+} = require("../utils/states");
 
 const bot = new TelegramBot(process.env.BOT_TOKEN, {
-  polling: true,
+    polling: true
 });
 
 console.log("🤖 PayCave Bot Started");
-// ================= Register User =================
+
+// =======================================
+// REGISTER USER
+// =======================================
 
 async function registerUser(msg) {
-  const telegramId = String(msg.from.id);
-
-  try {
-    const user = await db.getUser(telegramId);
-
-    if (!user) {
-      await db.createUser({
-        telegramId,
-        username: msg.from.username || "",
-        first_name: msg.from.first_name || "",
-        last_name: msg.from.last_name || "",
-      });
-
-      console.log("✅ New User:", telegramId);
-    }
-  } catch (err) {
-    console.log(err);
-  }
-}
-
-// ================= Home =================
-
-async function sendHome(chatId) {
-  await bot.sendMessage(
-    chatId,
-    `🎉 *Welcome to PayCave* Your reliable VTU platform. Choose a service below.`,
-    {
-      parse_mode: "Markdown",
-      ...keyboards.HOME_MENU,
-    }
-  );
-}
-
-// ================= Start Command =================
-
-bot.onText(/\/start/, async (msg) => {
-  await registerUser(msg);
-
-  clearState(msg.from.id);
-  clearState(msg.from.id);
-
-  await sendHome(msg.chat.id);
-});
-// ================= Main Message Handler =================
-
-bot.on("message", async (msg) => {
-  if (!msg.text) return;
-
-  if (msg.text.startsWith("/")) return;
-
-  await registerUser(msg);
-
-  const text = msg.text;
-
-  const state = getState(msg.from.id);
-  // =======================
-  // AIRTIME FLOW
-  // =======================
-
-  if (state?.state === "awaiting_airtime_phone") {
-    
-    if (!/^0\d{10}$/.test(text)) {
-      return bot.sendMessage(
-        msg.chat.id,
-        "❌ Please enter a valid Nigerian phone number."
-      );
-    }
-
-    setState(msg.from.id, "awaiting_airtime_amount", {
-      network: state.data.network,
-      phone: text,
-    });
-
-    return bot.sendMessage(msg.chat.id, "💵 Enter Airtime Amount:");
-  }
-// =========================
-// AIRTIME AMOUNT
-// =========================
-
-if (state?.state === "awaiting_airtime_amount") {
-
-    const amount = Number(text);
-
-    if (isNaN(amount) || amount < 50) {
-
-        return bot.sendMessage(
-            msg.chat.id,
-            "❌ Minimum airtime amount is ₦50."
-        );
-
-    }
 
     const telegramId = String(msg.from.id);
 
-const balance = await db.getBalance(telegramId);
+    try {
 
-console.log("Telegram ID:", telegramId);
-console.log("Wallet Balance:", balance);
+        const user = await db.getUser(telegramId);
 
-    if (balance < amount) {
+        if (!user) {
 
-        clearState(msg.from.id);
+            await db.createUser({
 
-        return bot.sendMessage(
-            msg.chat.id,
-            "❌ Insufficient wallet balance."
-        );
+                telegramId,
 
-    }
+                username: msg.from.username || "",
 
-    const phone = state.data.phone;
-    const network = state.data.network;
+                first_name: msg.from.first_name || "",
 
-    await db.deductBalance(telegramId, amount);
+                last_name: msg.from.last_name || ""
 
-    const purchase = await airtimeHandler.buyAirtime(
-        msg,
-        network,
-        phone,
-        amount
-    );
-    console.log("PairGate Response:", purchase);
+            });
 
-    if (!purchase.success) {
+            console.log("✅ New User:", telegramId);
 
-        await db.updateBalance(msg.from.id, amount);
+        }
 
-        clearState(msg.from.id);
+    } catch (err) {
 
-        return bot.sendMessage(
-            msg.chat.id,
-            "❌ Airtime purchase failed.\n\nYour wallet has been refunded."
-        );
+        console.error(err);
 
     }
 
-    await db.saveServiceTransaction({
+}
 
-        telegramId: msg.from.id,
+// =======================================
+// HOME
+// =======================================
 
-        reference: purchase.requestId,
-
-        service: "AIRTIME",
-
-        provider: network,
-
-        recipient: phone,
-
-        amount,
-
-        profit: 0,
-
-        status: "SUCCESS"
-
-    });
-
-    clearState(msg.from.id);
+async function sendHome(chatId) {
 
     return bot.sendMessage(
 
-        msg.chat.id,
+        chatId,
 
-        `✅ Airtime Purchase Successful
+        `🎉 *Welcome to PayCave*
 
-📱 ${phone}
-📡 ${network}
-💵 ₦${amount}
+Your reliable VTU platform.
 
-Reference:
-${purchase.requestId}`
+Choose a service below.`,
+
+        {
+
+            parse_mode: "Markdown",
+
+            ...keyboards.HOME_MENU
+
+        }
 
     );
 
 }
 
-  if (state?.state === "awaiting_airtime_amount") {
-    const amount = Number(text);
+// =======================================
+// /START
+// =======================================
 
-    if (isNaN(amount) || amount < 50) {
-      return bot.sendMessage(msg.chat.id, "❌ Minimum airtime amount is ₦50.");
-    }
+bot.onText(/\/start/, async (msg) => {
 
-    const result = await airtimeHandler.buyAirtime(
-      msg,
-      state.data.network,
-      state.data.phone,
-      amount
-    );
+    await registerUser(msg);
 
     clearState(msg.from.id);
 
-    return;
-  }
+    return sendHome(msg.chat.id);
 
-  if (state && state.state === "awaiting_funding_amount") {
-    const amount = Number(text);
+});
 
-    if (isNaN(amount) || amount < 100) {
-      return bot.sendMessage(
-        msg.chat.id,
-        "❌ Please enter a valid amount (minimum ₦100)."
-      );
+// =======================================
+// GREETINGS
+// =======================================
+
+bot.on("message", async (msg) => {
+
+    if (!msg.text) return;
+
+    if (msg.text.startsWith("/")) return;
+
+    const greetings = [
+
+        "hi",
+
+        "hello",
+
+        "hey",
+
+        "yo",
+
+        "start",
+
+        "good morning",
+
+        "good afternoon",
+
+        "good evening"
+
+    ];
+
+    if (greetings.includes(msg.text.trim().toLowerCase())) {
+
+        clearState(msg.from.id);
+
+        return sendHome(msg.chat.id);
+
     }
 
-    clearState(msg.from.id);
+});
 
-    return await wallet.fundWalletAmount(bot, msg, amount);
-  }
+bot.on("message", async (msg) => {
 
-  switch (text) {
-    case "💰 Wallet":
-      clearState(msg.from.id);
-      clearState(msg.from.id);
+    if (!msg.text) return;
+    if (msg.text.startsWith("/")) return;
 
-      await wallet.openWallet(bot, msg);
+    await registerUser(msg);
 
-      break;
+    const text = msg.text.trim();
+    const telegramId = String(msg.from.id);
+    const state = getState(msg.from.id);
 
-    case "➕ Fund Wallet":
-      clearState(msg.from.id);
+    // ==================================
+    // LET HANDLERS PROCESS THEIR STATES FIRST
+    // ==================================
 
-      await wallet.fundWallet(bot, msg);
+    const airtimeHandled = await airtimeHandler.handleMessage(bot, msg);
+    if (airtimeHandled) return;
 
-      break;
+    const dataHandled = await dataHandler.handleMessage(bot, msg);
+    if (dataHandled) return;
 
-    case "📜 Wallet History":
-      clearState(msg.from.id);
-      clearState(msg.from.id);
+    // ==================================
+    // WALLET FUNDING
+    // ==================================
 
-      await wallet.walletHistory(bot, msg);
+    if (state?.state === "awaiting_funding_amount") {
+        const amount = Number(text);
 
-      break;
+        if (isNaN(amount) || amount < 100) {
+            return bot.sendMessage(
+                msg.chat.id,
+                "❌ Minimum funding amount is ₦100."
+            );
+        }
 
-    case "🏠 Home":
+        clearState(msg.from.id);
+        return wallet.fundWalletAmount(
+            bot,
+            msg,
+            amount
+        );
+    }
 
-    case "🔙 Back":
-      clearState(msg.from.id);
-      clearState(msg.from.id);
+    // ==================================
+    // SWITCH
+    // ==================================
 
-      await sendHome(msg.chat.id);
+    switch (text) {
 
-      break;
-    case "📱 Buy Data":
-          setState(msg.from.id, {
-                  state: "data_network"
-                      });
+        // =========================
+        // WALLET
+        // =========================
 
-                          bot.sendMessage(
-                                  msg.chat.id,
-                                          "📶 Select Network",
-                                                  keyboards.DATA_NETWORKS
-                                                      );
+        case "💰 Wallet":
+            clearState(msg.from.id);
+            return await wallet.openWallet(bot, msg);
 
-                                                          break;
+        case "➕ Fund Wallet":
+            clearState(msg.from.id);
+            return await wallet.fundWallet(bot, msg);
 
-    case "📞 Airtime":
-          setState(msg.from.id, {
-                  state: "airtime_network"
-                      });
+        case "📜 Wallet History":
+            clearState(msg.from.id);
+            return await wallet.walletHistory(bot, msg);
 
-                          bot.sendMessage(
-                                  msg.chat.id,
-                                          "📞 Select Network",
-                                                  keyboards.AIRTIME_NETWORKS
-                                                      );
+        // =========================
+        // HOME
+        // =========================
 
-                                                          break;
+        case "🏠 Home":
+        case "🔙 Back":
 
-    case "⚡ Electricity":
-      clearState(msg.from.id);
-      clearState(msg.from.id);
+            clearState(msg.from.id);
 
-      bot.sendMessage(
-        msg.chat.id,
-        "⚡ Select Electricity Distribution Company",
-        keyboards.ELECTRICITY_MENU
-      );
+            return await sendHome(msg.chat.id);
 
-      break;
+        // =========================
+        // DATA
+        // =========================
 
-    case "📺 Cable TV":
-      clearState(msg.from.id);
-      clearState(msg.from.id);
+        case "📱 Buy Data":
 
-      bot.sendMessage(
-        msg.chat.id,
-        "📺 Select Cable Provider",
-        keyboards.CABLE_MENU
-      );
+            clearState(msg.from.id);
 
-      break;
+            setState(
+                msg.from.id,
+                "data_network"
+            );
 
-    case "🎓 Education":
-      clearState(msg.from.id);
-      clearState(msg.from.id);
+            return bot.sendMessage(
+                msg.chat.id,
+                "📶 Select Network",
+                keyboards.DATA_NETWORKS
+            );
 
-      bot.sendMessage(
-        msg.chat.id,
-        "🎓 Select Examination",
-        keyboards.EDUCATION_MENU
-      );
+        // =========================
+        // AIRTIME
+        // =========================
 
-      break;
+        case "📞 Airtime":
 
-    case "📊 Transactions":
-      clearState(msg.from.id);
-      clearState(msg.from.id);
+            clearState(msg.from.id);
 
-      bot.sendMessage(msg.chat.id, "📊 Transaction history will appear here.");
+            setState(
+                msg.from.id,
+                "airtime_network"
+            );
 
-      break;
+            return bot.sendMessage(
+                msg.chat.id,
+                "📞 Select Network",
+                keyboards.AIRTIME_NETWORKS
+            );
 
-    case "💬 Contact Support":
-      clearState(msg.from.id);
-      clearState(msg.from.id);
+        // =========================
+        // NETWORKS
+        // =========================
 
-      bot.sendMessage(
-        msg.chat.id,
-        `💬 Need help? Username: @${process.env.SUPPORT_USERNAME}`
-      );
+        case "MTN":
 
-      break;
- 
-  case "MTN":
-        if (state?.state === "data_network") {
-                await dataHandler.startData(bot, msg, "mtn");
-                    } else {
-                            await airtimeHandler.startAirtime(bot, msg, "mtn");
-                                }
-                                break;
-                                  
+            if (state?.state === "data_network") {
 
-                                
+                setState(msg.from.id, "data_category", {
+                    provider: "mtn"
+                });
 
-                                   case "Airtel":
-                                        if (state?.state === "data_network") {
-                                                await dataHandler.startData(bot, msg, "airtel");
-                                                    } else {
-                                                            await airtimeHandler.startAirtime(bot, msg, "airtel");
-                                                                }
-                                                                    break;                     
+                return dataHandler.startData(bot, msg, "mtn");
 
-                                                                                  
+            }
 
-                                                                                                            
+            return airtimeHandler.startAirtime(bot, msg, "mtn");
 
-                                                                                                            case "Glo":
-                                                                                                                  if (state?.state === "data_network") {
-                                                                                                                          await dataHandler.startData(bot, msg, "glo");
-                                                                                                                              } else {
-                                                                                                                                      await airtimeHandler.startAirtime(bot, msg, "glo");
-                                                                                                                                          }
-                                                                                                                                              break;
 
-                                                                                                                                    
+        case "Airtel":
 
-                                                                                                                                                                
+            if (state?.state === "data_network") {
 
-case "🏢 Corporate Gifting":
-      await dataHandler.startPlans(bot, msg, "CG");
-          break;
+                setState(msg.from.id, "data_category", {
+                    provider: "airtel"
+                });
 
-          case "💼 SME":
-              await dataHandler.startPlans(bot, msg, "SME");
-                  break;
+                return dataHandler.startData(bot, msg, "airtel");
 
-                  case "🎁 Gifting":
-                      await dataHandler.startPlans(bot, msg, "GIFTING");
-                          break;
+            }
 
-                          case "🔥 Awoof":
-                              await dataHandler.startPlans(bot, msg, "AWOOF");
-                                  break;
-    case "WAEC":
-      bot.sendMessage(
-        msg.chat.id,
-        "🎓 WAEC Checker PIN purchase will be enabled by Admin."
-      );
+            return airtimeHandler.startAirtime(bot, msg, "airtel");
 
-      break;
 
-    case "NECO":
-      bot.sendMessage(
-        msg.chat.id,
-        "🎓 NECO Token purchase will be enabled by Admin."
-      );
+        case "Glo":
 
-      break;
+            if (state?.state === "data_network") {
 
-    case "DSTV":
+                setState(msg.from.id, "data_category", {
+                    provider: "glo"
+                });
 
-    case "GOTV":
+                return dataHandler.startData(bot, msg, "glo");
 
-    case "Startimes":
-      bot.sendMessage(
-        msg.chat.id,
-        `${text} subscription module coming next phase.`
-      );
+            }
 
-      break;
-    default:
-      if (state?.state === "awaiting_funding_amount") {}
-        bot.sendMessage(
-          msg.chat.id,
-          "🏦 Flutterwave funding flow will be connected in the next step."
+            return airtimeHandler.startAirtime(bot, msg, "glo");
+
+        case "9mobile":
+
+            if (state?.state === "data_network") {
+
+                setState(msg.from.id, "data_category", {
+                    provider: "9mobile"
+                });
+
+                return dataHandler.startData(bot, msg, "9mobile");
+
+            }
+
+            return airtimeHandler.startAirtime(bot, msg, "9mobile");
+
+        // =========================
+        // DATA CATEGORIES
+        // =========================
+
+        case "🏢 Corporate Gifting":
+
+            if (state?.state !== "data_category") return;
+
+            state.data.planType = "CG";
+            state.data.page = 1;
+
+            return dataHandler.startPlans(
+                bot,
+                msg,
+                state,
+                state.data.provider,
+                "CG",
+                1
+            );
+
+
+        case "💼 SME":
+
+            if (state?.state !== "data_category") return;
+
+            state.data.planType = "SME";
+            state.data.page = 1;
+
+            return dataHandler.startPlans(
+                bot,
+                msg,
+                state,
+                state.data.provider,
+                "SME",
+                1
+            );
+
+
+        case "🎁 Gifting":
+
+            if (state?.state !== "data_category") return;
+
+            state.data.planType = "GIFTING";
+            state.data.page = 1;
+
+            return dataHandler.startPlans(
+                bot,
+                msg,
+                state,
+                state.data.provider,
+                "GIFTING",
+                1
+            );
+
+
+        case "🔥 Awoof":
+
+            if (state?.state !== "data_category") return;
+
+            state.data.planType = "AWOOF";
+            state.data.page = 1;
+
+            return dataHandler.startPlans(
+                bot,
+                msg,
+                state,
+                state.data.provider,
+                "AWOOF",
+                1
+            );
+
+        // =========================
+        // PAGINATION
+        // =========================
+
+        case "Next ➡️":
+
+            if (state?.state !== "data_category") return;
+
+            state.data.page++;
+
+            return dataHandler.startPlans(
+                bot,
+                msg,
+                state,
+                state.data.provider,
+                state.data.planType,
+                state.data.page
+            );
+
+
+        case "⬅️ Previous":
+
+            if (state?.state !== "data_category") return;
+
+            state.data.page = Math.max(
+                state.data.page - 1,
+                1
+            );
+
+            return dataHandler.startPlans(
+                bot,
+                msg,
+                state,
+                state.data.provider,
+                state.data.planType,
+                state.data.page
+            );
+
+        // =========================
+        // OTHER SERVICES
+        // =========================
+
+        case "🎓 Education":
+
+            clearState(msg.from.id);
+
+            return educationHandler.startEducation(
+                bot,
+                msg.chat.id
+            );
+
+
+        case "📚 WAEC Pin":
+        case "📚 NECO Pin": {
+            const examType = text.includes("WAEC") ? "WAEC" : "NECO";
+            setState(msg.from.id, "exam_qty", { examType });
+            return educationHandler.selectQuantity(bot, msg.chat.id, examType);
+        }
+
+        case "1 WAEC":
+        case "2 WAEC":
+        case "3 WAEC":
+        case "4 WAEC":
+        case "5 WAEC":
+        case "1 NECO":
+        case "2 NECO":
+        case "3 NECO":
+        case "4 NECO":
+        case "5 NECO": {
+            if (state?.state !== "exam_qty") return;
+            const parts = text.split(" ");
+            const qty = Number(parts[0]);
+            const examType = parts[1];
+
+            setState(msg.from.id, "exam_payment", { examType, qty });
+            return educationHandler.showPaymentInstructions(bot, msg.chat.id, examType, qty);
+        }
+
+
+        case "📊 Transactions":
+
+            clearState(msg.from.id);
+
+            return transactionHandler.openTransactions(
+                bot,
+                msg
+            );
+
+
+        case "💬 Contact Support":
+
+            clearState(msg.from.id);
+
+            return bot.sendMessage(
+
+                msg.chat.id,
+
+                `💬 Need help?
+
+Contact @${process.env.SUPPORT_USERNAME}`
+
+            );
+
+
+        // =========================
+        // EDUCATION SHORTCUTS
+        // =========================
+
+        case "WAEC":
+
+            return bot.sendMessage(
+                msg.chat.id,
+                "🎓 WAEC Checker PIN purchase will be enabled by Admin."
+            );
+
+
+        case "NECO":
+
+            return bot.sendMessage(
+                msg.chat.id,
+                "🎓 NECO Token purchase will be enabled by Admin."
+            );
+
+
+        // =========================
+        // DEFAULT
+        // =========================
+
+        default:
+
+            if (text.startsWith("✅ I Have Paid")) {
+                if (state?.state === "exam_payment") {
+                    const orderData = state.data;
+                    clearState(msg.from.id);
+                    return educationHandler.handlePaymentConfirmation(bot, msg.chat.id, orderData);
+                }
+            }
+                                                                                                                    
+            if (state) {
+                clearState(msg.from.id);
+            }
+
+            return bot.sendMessage(
+                msg.chat.id,
+                "❓ I didn't understand that.\n\nChoose an option below.",
+                keyboards.HOME_MENU
+            );
+    }
+});
+
+// ============================
+// FLUTTERWAVE PAYMENT & CALLBACK VERIFICATION
+// ============================
+
+bot.on("callback_query", async (query) => {
+
+    // Answer callback query immediately to stop loading spinner
+    try {
+        await bot.answerCallbackQuery(query.id);
+    } catch (e) {}
+
+    const data = query.data;
+    const chatId = query.message.chat.id;
+
+    if (data === 'cancel_transaction') {
+        try {
+            await bot.deleteMessage(chatId, query.message.message_id);
+        } catch (e) {}
+        return bot.sendMessage(chatId, "❌ Transaction cancelled.", keyboards.HOME_MENU);
+    }
+
+    if (!data.startsWith("verify_")) return;
+
+    const telegramId = String(query.from.id);
+    const reference = data.replace("verify_", "");
+
+    let result;
+
+    try {
+
+        result = await flutterwave.verifyPayment(reference);
+
+    } catch (err) {
+
+        console.error("Verification Error:", err);
+
+        return bot.sendMessage(
+            chatId,
+            `❌ Payment verification failed.\n\n${err.message}`
         );
 
-        clearState(msg.from.id);
+    }
 
-        break;
-      }
+    if (!result.success) {
 
-      if (state) {
-        clearState(msg.from.id);
-      }
+        return bot.sendMessage(
+            chatId,
+            "❌ Payment not found yet.\n\nIf you just paid, wait a few seconds and try again."
+        );
 
-      
-  }
-);
-bot.on("callback_query", async (query) => {
-  if (!query.data.startsWith("verify_")) return;
+    }
 
-  const chatId = query.message.chat.id;
-  const telegramId = String(query.from.id);
-  const reference = query.data.replace("verify_", "");
+    console.log("Telegram ID:", telegramId);
+    console.log("Amount from Flutterwave:", result.data.amount);
 
-  await bot.answerCallbackQuery(query.id, {
-    text: "Checking payment...",
-  });
-
-  let result;
-
-  try {
-    result = await flutterwave.verifyPayment(reference);
-  } catch (err) {
-    console.error("Verification Error:", err);
-
-    return bot.sendMessage(
-      chatId,
-      `❌ Payment verification failed.\n\n${err.message}`
+    await db.updateBalance(
+        telegramId,
+        Number(result.data.amount)
     );
-  }
 
-  if (!result.success) {
-    return bot.sendMessage(
-      chatId,
-      "❌ Payment not found yet.\n\nIf you just paid, wait a few seconds and try again."
+    await db.updateWalletTransactionStatus(
+        reference,
+        "SUCCESS"
     );
-  }
-console.log("Telegram ID:", telegramId);
-console.log("Amount from Flutterwave:", result.data.amount);
-console.log("Number(amount):", Number(result.data.amount));
-  await db.updateBalance(telegramId, Number(result.data.amount));
-  console.log("Balance update completed");
-  await db.updateWalletTransactionStatus(reference, "SUCCESS");
 
-  bot.sendMessage(
-    chatId,
-    `✅ Payment confirmed!\n\n₦${Number( result.data.amount ).toLocaleString()} has been added to your wallet.`
-  );
+    await bot.sendMessage(
+        chatId,
+        `✅ Payment confirmed!
+
+₦${Number(result.data.amount).toLocaleString()} has been added to your wallet.`
+    );
+
 });
+
 module.exports = bot;
