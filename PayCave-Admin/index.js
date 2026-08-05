@@ -19,7 +19,7 @@ const { handleTransactionsMenu,handleSearchPrompt } = require('./src/admin/handl
 
 const db = require('./database/database.js');
 
-const token = process.env.BOT_TOKEN;
+const token = process.env.ADMIN_BOT_TOKEN;
 
 const bot = new TelegramBot(token, {
     polling: true
