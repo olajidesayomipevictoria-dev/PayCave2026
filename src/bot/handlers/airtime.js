@@ -59,10 +59,10 @@ async function handleMessage(bot, msg) {
         return true;
     }
 
-    // AMOUNT
+    // AMOUNT & IMMEDIATE PURCHASE
     if (state.state === "awaiting_airtime_amount") {
 
-        // Check for Back or Home navigation buttons before parsing number
+        // Check for Back or Home navigation buttons
         if (msg.text && (msg.text.includes("Back") || msg.text.includes("Home") || msg.text === "/start")) {
             clearState(msg.from.id);
             return false;
@@ -78,52 +78,34 @@ async function handleMessage(bot, msg) {
             return true;
         }
 
-        airtimeSessions[msg.from.id] = {
-            network: state.data.network,
-            phone: state.data.phone,
-            amount
-        };
+        const network = state.data.network;
+        const phone = state.data.phone;
 
+        // Clear state first so the user isn't trapped if something fails
         clearState(msg.from.id);
 
         await bot.sendMessage(
             msg.chat.id,
-            `🧾 *Review Purchase*
-
-📱 Phone: ${state.data.phone}
-💵 Amount: ₦${amount}
-
-Reply with:
-
-YES → Confirm
-NO → Cancel`,
-            {
-                parse_mode: "Markdown"
-            }
+            "⏳ Processing your airtime purchase..."
         );
 
-        setState(msg.from.id, "awaiting_airtime_confirmation");
+        // Execute purchase directly
+        const result = await buyAirtime(msg, network, phone, amount);
+
+        if (result && result.success) {
+            await bot.sendMessage(
+                msg.chat.id,
+                `✅ *Airtime Purchase Successful!*\n\n📱 Phone: ${phone}\n💵 Amount: ₦${amount}\n💬 Message: ${result.message || "Completed"}`,
+                { parse_mode: "Markdown" }
+            );
+        } else {
+            await bot.sendMessage(
+                msg.chat.id,
+                `❌ Purchase failed: ${result?.message || "Please try again later."}`
+            );
+        }
 
         return true;
-    }
-
-    // CONFIRMATION
-    if (state.state === "awaiting_airtime_confirmation") {
-        const text = msg.text ? msg.text.trim().toLowerCase() : "";
-        
-        if (text === "yes") {
-            // Grab details from state data and execute purchase
-            await buyAirtime(msg, state.data.network, state.data.phone, state.data.amount);
-            clearState(msg.from.id);
-            return true;
-        } else if (text === "no") {
-            clearState(msg.from.id);
-            await bot.sendMessage(msg.chat.id, "❌ Airtime purchase cancelled.");
-            return true;
-        } else {
-            await bot.sendMessage(msg.chat.id, "❌ I didn't understand that. Please reply with YES or NO.");
-            return true;
-        }
     }
 
     return false;
