@@ -125,6 +125,27 @@ const BACK_MENU = {
 
 };
 
+// ===============================
+// SETTINGS MENU (Inline)
+// ===============================
+
+const SETTINGS_MENU = {
+    reply_markup: {
+        inline_keyboard: [
+            [
+                { 
+                    text: process.env.MAINTENANCE_MODE === 'true' ? "🛠️ Maintenance: ON" : "🟢 Maintenance: OFF", 
+                    callback_data: "toggle_maintenance" 
+                }
+            ],
+            [
+                { text: "🔙 Back", callback_data: "admin_back" }
+            ]
+        ]
+    }
+};
+
+
 module.exports = {
 
     HOME_MENU,
@@ -133,6 +154,8 @@ module.exports = {
 
     DATA_NETWORKS,
 
-    BACK_MENU
+    BACK_MENU,
+
+    SETTINGS_MENU
 
 };

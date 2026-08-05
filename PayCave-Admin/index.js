@@ -1,4 +1,5 @@
 'use strict';
+require('dotenv').config({ path: __dirname + '/.env' });
 
 require('dotenv').config();
 
@@ -151,7 +152,15 @@ bot.on("message", async (msg) => {
         return await handleTransactionsMenu(bot, msg);
         
         case "⚙️ Settings":
-            return bot.sendMessage(chatId, "⚙️ Settings\n\nComing next...");
+            
+            case "⚙️ Settings":
+        const { SETTINGS_MENU } = require('./keyboard');
+        return await bot.sendMessage(msg.chat.id, "⚙️ **Admin Settings Panel**", {
+            parse_mode: 'Markdown',
+            ...SETTINGS_MENU
+        });
+
+
     }
 
     // 2. Handle Edit Plan selection trigger (starts with ✏ )
@@ -234,7 +243,39 @@ else if (action === 'search_vtu_tx') {
         } else if (action === 'search_wallet_tx') {
             await handleSearchPrompt(bot, query, 'wallet');
             }
+else if (data === 'admin_back') {}
 
+         else if (data === 'admin_back') {
+        // Return to home menu or previous view
+        bot.deleteMessage(query.message.chat.id, query.message.message_id);
+        bot.sendMessage(query.message.chat.id, "🏠 **Admin Home Menu**", { ...HOME_MENU });
+    } else if (data === 'toggle_maintenance') {
+        const currentState = process.env.MAINTENANCE_MODE === 'true';
+        process.env.MAINTENANCE_MODE = currentState ? 'false' : 'true';
+        const newState = process.env.MAINTENANCE_MODE === 'true';
 
-    
+        const updatedKeyboard = {
+            inline_keyboard: [
+                [
+                    { 
+                        text: newState ? "🛠️ Maintenance: ON" : "🟢 Maintenance: OFF", 
+                        callback_data: "toggle_maintenance" 
+                    }
+                ],
+                [
+                    { text: "🔙 Back", callback_data: "admin_back" }
+                ]
+            ]
+        };
+
+        bot.editMessageText(`⚙️ **Admin Settings Panel**\n\nMaintenance mode is currently **${newState ? 'ACTIVE (Locked)' : 'OFF (Normal)'}**`, {
+            chat_id: query.message.chat.id,
+            message_id: query.message.message_id,
+            parse_mode: 'Markdown',
+            reply_markup: updatedKeyboard
+        });
+        
+        bot.answerCallbackQuery(query.id, { text: newState ? "Maintenance Enabled 🛠️" : "Maintenance Disabled 🟢" });
+    }
+
 });

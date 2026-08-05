@@ -1,4 +1,5 @@
 "use strict";
+require('dotenv').config({ path: __dirname + '/../.env' }); // Adjust relative path to where your src/.env is located
 
 require("dotenv").config();
 
