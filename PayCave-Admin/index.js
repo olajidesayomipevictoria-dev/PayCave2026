@@ -10,6 +10,10 @@ const { HOME_MENU } = require('./keyboard');
 const prices = require('./handlers/prices');
 const data = require('./handlers/data');
 const session = require('./session');
+
+// 👇 1. ADDED REFUND SESSION TRACKER VARIABLE HERE
+const refundSession = {};
+
 const syncDataPlans = require('./services/syncDataPlans')
 const { handleUsersMenu, handleBanUserPrompt, handleBroadcastPrompt } = require('./src/admin/handlers/users');
 const { handleTransactionsMenu,handleSearchPrompt } = require('./src/admin/handlers/transactions');
@@ -59,10 +63,53 @@ bot.on("message", async (msg) => {
     if (msg.from.id !== ADMIN_ID) return;
     if (!msg.text) return;
 
-    console.log("BUTTON:", msg.text);
-
     const chatId = msg.chat.id;
     const text = msg.text;
+
+    // 👇 2. ADDED REFUND SESSION INTERCEPTOR BLOCK HERE
+    if (refundSession[chatId]) {
+        const rSession = refundSession[chatId];
+
+        if (rSession.step === 'awaiting_telegram_id') {
+            rSession.telegramId = text.trim();
+            rSession.step = 'awaiting_amount';
+            await bot.sendMessage(chatId, `✅ Target User ID: \`${rSession.telegramId}\`\n\n💰 Now, enter the **amount** to refund (e.g., 500):`, { parse_mode: 'Markdown' });
+            return;
+        }
+
+        if (rSession.step === 'awaiting_amount') {
+            const amount = parseFloat(text.trim());
+
+            if (isNaN(amount) || amount <= 0) {
+                await bot.sendMessage(chatId, "❌ Invalid amount. Please enter a valid number (e.g., 1000):");
+                return;
+            }
+
+            const targetUserTelegramId = rSession.telegramId;
+            delete refundSession[chatId]; // Clear session
+
+            try {
+                // Uses your database.js helper method to add balance safely
+                await db.updateBalance(targetUserTelegramId, amount);
+
+                await bot.sendMessage(chatId, `✅ Successfully refunded *₦${amount}* to user \`${targetUserTelegramId}\`!`, { parse_mode: 'Markdown' });
+
+                // Optional admin log entry
+                db.run(
+                    `INSERT INTO admin_logs (admin_id, action, description) VALUES (?, ?, ?)`,
+                    [ADMIN_ID, 'MANUAL_REFUND', `Refunded ₦${amount} to user ${targetUserTelegramId}`]
+                );
+
+            } catch (error) {
+                await bot.sendMessage(chatId, `❌ Error processing refund: ${error.message}`);
+            }
+            return;
+        }
+    }
+    // 👆 ========================================== 👆
+
+    console.log("BUTTON:", msg.text);
+
     const current = session.get(chatId);
 
     // 1. Handle Navigation & Static Menu Switches first
@@ -152,8 +199,6 @@ bot.on("message", async (msg) => {
         return await handleTransactionsMenu(bot, msg);
         
         case "⚙️ Settings":
-            
-            case "⚙️ Settings":
         const { SETTINGS_MENU } = require('./keyboard');
         return await bot.sendMessage(msg.chat.id, "⚙️ **Admin Settings Panel**", {
             parse_mode: 'Markdown',
@@ -228,28 +273,31 @@ bot.on("callback_query", async (query) => {
     }
 
     if (action === 'admin_users') {
-            await handleUsersMenu(bot, msg);
-            } else if (action === 'admin_ban_user') {
-                await handleBanUserPrompt(bot, msg);
-                } else if (action === 'admin_broadcast') {
-                    await handleBroadcastPrompt(bot, msg);
-                    }
-else if (action === 'admin_transactions') {
+        await handleUsersMenu(bot, msg);
+    } else if (action === 'admin_ban_user') {
+        await handleBanUserPrompt(bot, msg);
+    } else if (action === 'admin_broadcast') {
+        await handleBroadcastPrompt(bot, msg);
+    } else if (action === 'admin_transactions') {
         await handleTransactionsMenu(bot, msg);
-        }
-
-else if (action === 'search_vtu_tx') {
+    } else if (action === 'search_vtu_tx') {
         await handleSearchPrompt(bot, query, 'vtu');
-        } else if (action === 'search_wallet_tx') {
-            await handleSearchPrompt(bot, query, 'wallet');
-            }
-else if (data === 'admin_back') {}
-
-         else if (data === 'admin_back') {
+    } else if (action === 'search_wallet_tx') {
+        await handleSearchPrompt(bot, query, 'wallet');
+    } 
+    // 👇 3. ADDED MANUAL REFUND CALLBACK ACTION HERE
+    else if (action === 'start_manual_refund') {
+        const adminId = query.message.chat.id;
+        refundSession[adminId] = { step: 'awaiting_telegram_id' };
+        
+        await bot.sendMessage(adminId, "👤 Please type or paste the customer's **Telegram ID** for this refund:", { parse_mode: 'Markdown' });
+    }
+    // 👆 ========================================== 👆
+    else if (action === 'admin_back') {
         // Return to home menu or previous view
         bot.deleteMessage(query.message.chat.id, query.message.message_id);
         bot.sendMessage(query.message.chat.id, "🏠 **Admin Home Menu**", { ...HOME_MENU });
-    } else if (data === 'toggle_maintenance') {
+    } else if (action === 'toggle_maintenance') {
         const currentState = process.env.MAINTENANCE_MODE === 'true';
         process.env.MAINTENANCE_MODE = currentState ? 'false' : 'true';
         const newState = process.env.MAINTENANCE_MODE === 'true';

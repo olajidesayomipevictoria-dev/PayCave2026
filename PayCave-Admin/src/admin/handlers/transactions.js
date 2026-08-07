@@ -97,6 +97,9 @@ async function handleTransactionsMenu(bot, msg) {
                     { text: "🔍 Search Wallet Funding", callback_data: "search_wallet_tx" }
                 ],
                 [
+                    { text: "💸 Process Manual Refund", callback_data: "start_manual_refund" }
+                ],
+                [
                     { text: "🔙 Back to Admin Menu", callback_data: "admin_back" }
                 ]
             ]
