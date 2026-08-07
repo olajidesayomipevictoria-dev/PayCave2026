@@ -1,58 +1,68 @@
+'use strict';
+require('dotenv').config({ path: __dirname + '/.env' });
+
+require('dotenv').config();
+
+const TelegramBot = require('node-telegram-bot-api');
+
+const { HOME_MENU } = require('./keyboard');
+
+const prices = require('./handlers/prices');
+const data = require('./handlers/data');
+
+const session = require('./session');
+
+const syncDataPlans = require('./services/syncDataPlans')
+const { handleUsersMenu, handleBanUserPrompt, handleBroadcastPrompt } = require('./src/admin/handlers/users');
+const { handleTransactionsMenu,handleSearchPrompt } = require('./src/admin/handlers/transactions');
+
+
+// Note: Ensure your database instance is required or imported here if it is in a separate file (e.g., const db = require('./database');)
+
+const db = require('./database/database.js');
+
+const token = process.env.ADMIN_BOT_TOKEN;
+
+const bot = new TelegramBot(token, {
+    polling: true
+});
+
+const ADMIN_ID = Number(process.env.ADMIN_ID);
+
+console.log("✅ PayCave Admin Bot Started");
+
+// ===============================
+// START
+// ===============================
+
+bot.onText(/\/start/, (msg) => {
+    if (msg.from.id !== ADMIN_ID) {
+        return bot.sendMessage(
+            msg.chat.id,
+            "⛔ Access denied."
+        );
+    }
+
+    bot.sendMessage(
+        msg.chat.id,
+        "👑 *PayCave Admin Panel*\n\nWelcome back, Admin.",
+        {
+            parse_mode: "Markdown",
+            ...HOME_MENU
+        }
+    );
+});
+
+// ===============================
+// BUTTON & MESSAGE HANDLER
+// ===============================
+
 bot.on("message", async (msg) => {
     if (msg.from.id !== ADMIN_ID) return;
     if (!msg.text) return;
 
     const chatId = msg.chat.id;
     const text = msg.text;
-
-    // 👇 2. FIXED REFUND SESSION INTERCEPTOR BLOCK
-    if (refundSession[chatId]) {
-        const rSession = refundSession[chatId];
-        
-        if (rSession.step === 'awaiting_telegram_id') {
-            rSession.telegramId = text.trim();
-            rSession.step = 'awaiting_amount';
-            await bot.sendMessage(chatId, `✅ Target User ID: \`${rSession.telegramId}\`\n\n💰 Now, enter the **amount** to refund (e.g., 500):`, { parse_mode: 'Markdown' });
-            return;
-        }
-
-        if (rSession.step === 'awaiting_amount') {
-            const amount = parseFloat(text.trim());
-
-            if (isNaN(amount) || amount <= 0) {
-                await bot.sendMessage(chatId, "❌ Invalid amount. Please enter a valid number (e.g., 1000):");
-                return;
-            }
-
-            const targetUserTelegramId = rSession.telegramId;
-            delete refundSession[chatId]; // Clear session
-
-            try {
-                const response = await axios.post('http://localhost:10000/api/admin/refund', {
-                    secretKey: process.env.ADMIN_SECRET_KEY,
-                    telegramId: targetUserTelegramId,
-                    amount: amount
-                });
-
-                if (response.data.success) {
-                    await bot.sendMessage(chatId, `✅ Successfully refunded *₦${amount}* to user \`${targetUserTelegramId}\`!`, { parse_mode: 'Markdown' });
-
-                    // Optional admin log entry
-                    db.run(
-                        `INSERT INTO admin_logs (admin_id, action, description) VALUES (?, ?, ?)`,
-                        [ADMIN_ID, 'MANUAL_REFUND', `Refunded ₦${amount} to user ${targetUserTelegramId}`]
-                    );
-                } else {
-                    await bot.sendMessage(chatId, `❌ Failed to refund: ${response.data.message}`);
-                }
-
-            } catch (error) {
-                await bot.sendMessage(chatId, `❌ Error connecting to server: ${error.message}`);
-            }
-            return;
-        }
-    }
-    // 👆 ========================================== 👆
 
     console.log("BUTTON:", msg.text);
 
@@ -142,14 +152,16 @@ bot.on("message", async (msg) => {
         case "👥 Users":
             return await handleUsersMenu(bot, msg, db);
         case "📊 Transactions":
-            return await handleTransactionsMenu(bot, msg);
+        return await handleTransactionsMenu(bot, msg);
         
         case "⚙️ Settings":
-            const { SETTINGS_MENU } = require('./keyboard');
-            return await bot.sendMessage(msg.chat.id, "⚙️ **Admin Settings Panel**", {
-                parse_mode: 'Markdown',
-                ...SETTINGS_MENU
-            });
+        const { SETTINGS_MENU } = require('./keyboard');
+        return await bot.sendMessage(msg.chat.id, "⚙️ **Admin Settings Panel**", {
+            parse_mode: 'Markdown',
+            ...SETTINGS_MENU
+        });
+
+
     }
 
     // 2. Handle Edit Plan selection trigger (starts with ✏ )
@@ -198,4 +210,67 @@ bot.on("message", async (msg) => {
             return;
         }
     }
+});
+
+// ===============================
+// CALLBACK QUERY HANDLER (INLINE BUTTONS)
+// ===============================
+
+bot.on("callback_query", async (query) => {
+    if (query.from.id !== ADMIN_ID) return;
+
+    const action = query.data;
+    const msg = query.message;
+
+    try {
+        await bot.answerCallbackQuery(query.id);
+    } catch (err) {
+        console.error("Error answering callback query:", err);
+    }
+
+    if (action === 'admin_users') {
+        await handleUsersMenu(bot, msg);
+    } else if (action === 'admin_ban_user') {
+        await handleBanUserPrompt(bot, msg);
+    } else if (action === 'admin_broadcast') {
+        await handleBroadcastPrompt(bot, msg);
+    } else if (action === 'admin_transactions') {
+        await handleTransactionsMenu(bot, msg);
+    } else if (action === 'search_vtu_tx') {
+        await handleSearchPrompt(bot, query, 'vtu');
+    } else if (action === 'search_wallet_tx') {
+        await handleSearchPrompt(bot, query, 'wallet');
+    } else if (action === 'admin_back') {
+        // Return to home menu or previous view
+        bot.deleteMessage(query.message.chat.id, query.message.message_id);
+        bot.sendMessage(query.message.chat.id, "🏠 **Admin Home Menu**", { ...HOME_MENU });
+    } else if (action === 'toggle_maintenance') {
+        const currentState = process.env.MAINTENANCE_MODE === 'true';
+        process.env.MAINTENANCE_MODE = currentState ? 'false' : 'true';
+        const newState = process.env.MAINTENANCE_MODE === 'true';
+
+        const updatedKeyboard = {
+            inline_keyboard: [
+                [
+                    { 
+                        text: newState ? "🛠️ Maintenance: ON" : "🟢 Maintenance: OFF", 
+                        callback_data: "toggle_maintenance" 
+                    }
+                ],
+                [
+                    { text: "🔙 Back", callback_data: "admin_back" }
+                ]
+            ]
+        };
+
+        bot.editMessageText(`⚙️ **Admin Settings Panel**\n\nMaintenance mode is currently **${newState ? 'ACTIVE (Locked)' : 'OFF (Normal)'}**`, {
+            chat_id: query.message.chat.id,
+            message_id: query.message.message_id,
+            parse_mode: 'Markdown',
+            reply_markup: updatedKeyboard
+        });
+        
+        bot.answerCallbackQuery(query.id, { text: newState ? "Maintenance Enabled 🛠️" : "Maintenance Disabled 🟢" });
+    }
+
 });
