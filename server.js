@@ -1,6 +1,7 @@
 const express = require("express");
 const { fork } = require("child_process");
-const db = require("./database/database.js");
+const db = require("./src/database/database.js");
+
 // Import the main customer database
 const app = express();
 const PORT = process.env.PORT || 10000;
