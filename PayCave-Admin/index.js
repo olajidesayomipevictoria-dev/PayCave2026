@@ -89,8 +89,17 @@ bot.on("message", async (msg) => {
             delete refundSession[chatId]; // Clear session
 
             try {
-                // Uses your database.js helper method to add balance safely
-                await db.updateBalance(targetUserTelegramId, amount);
+                // Directly update the user's balance and log the transaction safely
+                await new Promise((resolve, reject) => {
+                    db.run(
+                        `UPDATE users SET balance = balance + ? WHERE telegram_id = ?`,
+                        [amount, targetUserTelegramId],
+                        function (err) {
+                            if (err) reject(err);
+                            else resolve(this.changes);
+                        }
+                    );
+                });
 
                 await bot.sendMessage(chatId, `✅ Successfully refunded *₦${amount}* to user \`${targetUserTelegramId}\`!`, { parse_mode: 'Markdown' });
 
