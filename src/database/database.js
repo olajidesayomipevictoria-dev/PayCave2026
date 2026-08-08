@@ -315,4 +315,100 @@ db.getCustomPrice = function (planId) {
     });
 };
 
+// ================= REFUNDS (ADMIN) =================
+
+db.getWalletTransactionByReference = function(reference) {
+    return new Promise((resolve, reject) => {
+        db.get(
+            `SELECT * FROM wallet_transactions WHERE reference = ?`,
+            [reference],
+            (err, row) => {
+                if (err) return reject(err);
+                resolve(row || null);
+            }
+        );
+    });
+};
+
+db.refundWalletByReference = function(reference, adminId) {
+    return new Promise((resolve, reject) => {
+        db.serialize(() => {
+            db.run("BEGIN TRANSACTION");
+
+            db.get(
+                `SELECT * FROM wallet_transactions WHERE reference = ?`,
+                [reference],
+                (err, tx) => {
+                    if (err) {
+                        db.run("ROLLBACK");
+                        return reject(err);
+                    }
+
+                    if (!tx) {
+                        db.run("ROLLBACK");
+                        return resolve({ ok: false, reason: "NOT_FOUND" });
+                    }
+
+                    if (tx.status === "REFUNDED") {
+                        db.run("ROLLBACK");
+                        return resolve({ ok: false, reason: "ALREADY_REFUNDED", tx });
+                    }
+
+                    if (tx.status !== "SUCCESS") {
+                        db.run("ROLLBACK");
+                        return resolve({ ok: false, reason: "NOT_SUCCESS", tx });
+                    }
+
+                    db.run(
+                        `UPDATE users SET balance = balance - ? WHERE telegram_id = ? AND balance >= ?`,
+                        [Number(tx.amount), tx.telegram_id, Number(tx.amount)],
+                        function (deductErr) {
+                            if (deductErr) {
+                                db.run("ROLLBACK");
+                                return reject(deductErr);
+                            }
+
+                            if (this.changes === 0) {
+                                db.run("ROLLBACK");
+                                return resolve({ ok: false, reason: "INSUFFICIENT_BALANCE", tx });
+                            }
+
+                            db.run(
+                                `UPDATE wallet_transactions SET status = 'REFUNDED' WHERE reference = ?`,
+                                [reference],
+                                function (updErr) {
+                                    if (updErr) {
+                                        db.run("ROLLBACK");
+                                        return reject(updErr);
+                                    }
+
+                                    db.run(
+                                        `INSERT INTO admin_logs (admin_id, action, description) VALUES (?, ?, ?)`,
+                                        [
+                                            String(adminId),
+                                            "WALLET_REFUND",
+                                            `Refunded wallet tx ${reference} for user ${tx.telegram_id} amount ${tx.amount}`
+                                        ],
+                                        (logErr) => {
+                                            if (logErr) {
+                                                db.run("ROLLBACK");
+                                                return reject(logErr);
+                                            }
+
+                                            db.run("COMMIT", (commitErr) => {
+                                                if (commitErr) return reject(commitErr);
+                                                resolve({ ok: true, tx });
+                                            });
+                                        }
+                                    );
+                                }
+                            );
+                        }
+                    );
+                }
+            );
+        });
+    });
+};
+
 module.exports = db;
