@@ -20,6 +20,8 @@ const HOME_MENU = {
 
             ["📊 Transactions"],
 
+            ["💸 Refund Wallet Tx"],
+
             ["⚙️ Settings"]
 
         ]
@@ -52,31 +54,22 @@ const PRICES_MENU = {
                                                                     }
 
                                                                     };
-                                                                    
 
 
 
-    
 
-        
 
-        
 
-            
 
-        
 
-            
 
-        
 
-        
 
-            
 
-        
 
-    
+
+
+
 
 
 // ===============================
@@ -133,9 +126,9 @@ const SETTINGS_MENU = {
     reply_markup: {
         inline_keyboard: [
             [
-                { 
-                    text: process.env.MAINTENANCE_MODE === 'true' ? "🛠️ Maintenance: ON" : "🟢 Maintenance: OFF", 
-                    callback_data: "toggle_maintenance" 
+                {
+                    text: process.env.MAINTENANCE_MODE === 'true' ? "🛠️ Maintenance: ON" : "🟢 Maintenance: OFF",
+                    callback_data: "toggle_maintenance"
                 }
             ],
             [
