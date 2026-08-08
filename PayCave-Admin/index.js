@@ -19,7 +19,7 @@ const { handleTransactionsMenu,handleSearchPrompt } = require('./src/admin/handl
 
 // Note: Ensure your database instance is required or imported here if it is in a separate file (e.g., const db = require('./database');)
 
-const db = require('./database/database.js');
+const db = require('../src/database/database.js');
 
 const token = process.env.ADMIN_BOT_TOKEN;
 
@@ -153,7 +153,14 @@ bot.on("message", async (msg) => {
             return await handleUsersMenu(bot, msg, db);
         case "📊 Transactions":
         return await handleTransactionsMenu(bot, msg);
-        
+
+        case "💸 Refund Wallet Tx":
+            session.set(chatId, { action: "await_refund_reference" });
+            return bot.sendMessage(
+                chatId,
+                "Send wallet transaction reference to refund.\nExample: FLW-123456789"
+            );
+
         case "⚙️ Settings":
         const { SETTINGS_MENU } = require('./keyboard');
         return await bot.sendMessage(msg.chat.id, "⚙️ **Admin Settings Panel**", {
@@ -162,6 +169,42 @@ bot.on("message", async (msg) => {
         });
 
 
+    }
+
+    if (current?.action === "await_refund_reference") {
+        const reference = text.trim();
+
+        try {
+            const result = await db.refundWalletByReference(reference, ADMIN_ID);
+
+            if (!result.ok) {
+                if (result.reason === "NOT_FOUND") {
+                    return bot.sendMessage(chatId, "❌ Transaction not found.");
+                }
+                if (result.reason === "ALREADY_REFUNDED") {
+                    session.clear(chatId);
+                    return bot.sendMessage(chatId, "⚠️ This transaction has already been refunded.");
+                }
+                if (result.reason === "NOT_SUCCESS") {
+                    return bot.sendMessage(chatId, "❌ Only SUCCESS transactions can be refunded.");
+                }
+                if (result.reason === "INSUFFICIENT_BALANCE") {
+                    return bot.sendMessage(chatId, "❌ User wallet balance is lower than refund amount.");
+                }
+                return bot.sendMessage(chatId, "❌ Refund could not be processed.");
+            }
+
+            session.clear(chatId);
+
+            const tx = result.tx;
+            return bot.sendMessage(
+                chatId,
+                `✅ Refund successful\n\nRef: ${reference}\nUser: ${tx.telegram_id}\nAmount: ₦${Number(tx.amount).toLocaleString()}`
+            );
+        } catch (err) {
+            console.error("Refund error:", err);
+            return bot.sendMessage(chatId, "❌ Refund failed due to a system error.");
+        }
     }
 
     // 2. Handle Edit Plan selection trigger (starts with ✏ )
@@ -252,9 +295,9 @@ bot.on("callback_query", async (query) => {
         const updatedKeyboard = {
             inline_keyboard: [
                 [
-                    { 
-                        text: newState ? "🛠️ Maintenance: ON" : "🟢 Maintenance: OFF", 
-                        callback_data: "toggle_maintenance" 
+                    {
+                        text: newState ? "🛠️ Maintenance: ON" : "🟢 Maintenance: OFF",
+                        callback_data: "toggle_maintenance"
                     }
                 ],
                 [
@@ -269,7 +312,7 @@ bot.on("callback_query", async (query) => {
             parse_mode: 'Markdown',
             reply_markup: updatedKeyboard
         });
-        
+
         bot.answerCallbackQuery(query.id, { text: newState ? "Maintenance Enabled 🛠️" : "Maintenance Disabled 🟢" });
     }
 
