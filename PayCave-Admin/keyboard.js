@@ -20,11 +20,11 @@ const HOME_MENU = {
 
             ["📊 Transactions"],
 
-<<<<<<< HEAD
+
             ["💰 Credit Wallet"],
 
-=======
->>>>>>> ebca5e54a5f31ac8b9d1155120ce5f7a643afb6e
+
+
             ["💸 Refund Wallet Tx"],
 
             ["⚙️ Settings"]
