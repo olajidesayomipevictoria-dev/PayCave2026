@@ -411,7 +411,7 @@ db.refundWalletByReference = function(reference, adminId) {
     });
 };
 
-<<<<<<< HEAD
+
 // ================= MANUAL WALLET CREDIT (ADMIN) =================
 // Used when a VTU/data provider reports a failed transaction but the
 // customer's money still needs to be returned to their wallet, and there
@@ -477,6 +477,5 @@ db.manualCreditUser = function (telegramId, amount, adminId, reason) {
     });
 };
 
-=======
->>>>>>> ebca5e54a5f31ac8b9d1155120ce5f7a643afb6e
+
 module.exports = db;
