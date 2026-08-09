@@ -2,101 +2,100 @@
 
 const HOME_MENU = {
     reply_markup: {
-            resize_keyboard: true,
-                    keyboard: [
-                                ["📱 Buy Data", "📞 Airtime"],
-                                            ["⚡ Electricity", "📺 Cable TV"],
-                                                        ["🎓 Education", "💰 Wallet"],
-                                                                    ["📊 Transactions", "💬 Contact Support"]
-                                                                            ]
-                                                                                }
-                                                                                };
+        resize_keyboard: true,
+        keyboard: [
+            ["📱 Buy Data", "📞 Airtime"],
+            ["🎓 Education", "💰 Wallet"],
+            ["📊 Transactions", "💬 Contact Support"]
+        ]
+    }
+};
 
-                                                                                const BACK_HOME = {
-                                                                                    reply_markup: {
-                                                                                            resize_keyboard: true,
-                                                                                                    keyboard: [
-                                                                                                                ["🔙 Back", "🏠 Home"]
-                                                                                                                        ]
-                                                                                                                            }
-                                                                                                                            };
+const BACK_HOME = {
+    reply_markup: {
+        resize_keyboard: true,
+        keyboard: [
+            ["🔙 Back", "🏠 Home"]
+        ]
+    }
+};
 
-                                                                                                                            const WALLET_MENU = {
-                                                                                                                                reply_markup: {
-                                                                                                                                        resize_keyboard: true,
-                                                                                                                                                keyboard: [
-                                                                                                                                                            ["➕ Fund Wallet"],
-                                                                                                                                                                        ["📜 Wallet History"],
-                                                                                                                                                                                    ["🏠 Home"]
-                                                                                                                                                                                            ]
-                                                                                                                                                                                                }
-                                                                                                                                                                                                };
+const WALLET_MENU = {
+    reply_markup: {
+        resize_keyboard: true,
+        keyboard: [
+            ["➕ Fund Wallet"],
+            ["📜 Wallet History"],
+            ["🏠 Home"]
+        ]
+    }
+};
 
-                                                                                                                                                                                                const DATA_NETWORKS = {
-                                                                                                                                                                                                    reply_markup: {
-                                                                                                                                                                                                            resize_keyboard: true,
-                                                                                                                                                                                                                    keyboard: [
-                                                                                                                                                                                                                                ["MTN", "Airtel"],
-                                                                                                                                                                                                                                            ["Glo"],
-                                                                                                                                                                                                                                                        ["🔙 Back", "🏠 Home"]
-                                                                                                                                                                                                                                                                ]
-                                                                                                                                                                                                                                                                    }
-                                                                                                                                                                                                                                                                    };
+const DATA_NETWORKS = {
+    reply_markup: {
+        resize_keyboard: true,
+        keyboard: [
+            ["MTN", "Airtel"],
+            ["Glo"],
+            ["🔙 Back", "🏠 Home"]
+        ]
+    }
+};
 
-                                                                                                                                                                                                                                                                    const AIRTIME_NETWORKS = {
-                                                                                                                                                                                                                                                                        reply_markup: {
-                                                                                                                                                                                                                                                                                resize_keyboard: true,
-                                                                                                                                                                                                                                                                                        keyboard: [
-                                                                                                                                                                                                                                                                                                    ["MTN", "Airtel"],
-                                                                                                                                                                                                                                                                                                                ["Glo"],
-                                                                                                                                                                                                                                                                                                                            ["🔙 Back", "🏠 Home"]
-                                                                                                                                                                                                                                                                                                                                    ]
-                                                                                                                                                                                                                                                                                                                                       }
-                                                                                                                                                                                                                                                                                                                                        };
+const AIRTIME_NETWORKS = {
+    reply_markup: {
+        resize_keyboard: true,
+        keyboard: [
+            ["MTN", "Airtel"],
+            ["Glo"],
+            ["🔙 Back", "🏠 Home"]
+        ]
+    }
+};
 
-                                                                                                                                                                                                                                                                                                                                        const ELECTRICITY_MENU = {
-                                                                                                                                                                                                                                                                                                                                            reply_markup: {
-                                                                                                                                                                                                                                                                                                                                                    resize_keyboard: true,
-                                                                                                                                                                                                                                                                                                                                                            keyboard: [
-                                                                                                                                                                                                                                                                                                                                                                        ["IKEDC", "EKEDC"],
-                                                                                                                                                                                                                                                                                                                                                                                    ["AEDC", "KEDCO"],
-                                                                                                                                                                                                                                                                                                                                                                                                ["IBEDC", "PHED"],
-                                                                                                                                                                                                                                                                                                                                                                                                            ["JED", "BEDC"],
-                                                                                                                                                                                                                                                                                                                                                                                                                        ["EEDC", "YEDC"],
-                                                                                                                                                                                                                                                                                                                                                                                                                                    ["🔙 Back", "🏠 Home"]
-                                                                                                                                                                                                                                                                                                                                                                                                                                            ]
-                                                                                                                                                                                                                                                                                                                                                                                                                                                }
-                                                                                                                                                                                                                                                                                                                                                                                                                                                };
+const ELECTRICITY_MENU = {
+    reply_markup: {
+        resize_keyboard: true,
+        keyboard: [
+            ["IKEDC", "EKEDC"],
+            ["AEDC", "KEDCO"],
+            ["IBEDC", "PHED"],
+            ["JED", "BEDC"],
+            ["EEDC", "YEDC"],
+            ["🔙 Back", "🏠 Home"]
+        ]
+    }
+};
 
-                                                                                                                                                                                                                                                                                                                                                                                                                                                const CABLE_MENU = {
-                                                                                                                                                                                                                                                                                                                                                                                                                                                    reply_markup: {
-                                                                                                                                                                                                                                                                                                                                                                                                                                                            resize_keyboard: true,
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                    keyboard: [
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                ["DSTV", "GOTV"],
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            ["Startimes"],
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        ["🔙 Back", "🏠 Home"]
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                ]
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    }
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    };
+const CABLE_MENU = {
+    reply_markup: {
+        resize_keyboard: true,
+        keyboard: [
+            ["DSTV", "GOTV"],
+            ["Startimes"],
+            ["🔙 Back", "🏠 Home"]
+        ]
+    }
+};
 
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    const EDUCATION_MENU = {
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        reply_markup: {
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                resize_keyboard: true,
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        keyboard: [
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    ["WAEC"],
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                ["NECO"],
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            ["🔙 Back", "🏠 Home"]
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    ]
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        }
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        };
+const EDUCATION_MENU = {
+    reply_markup: {
+        resize_keyboard: true,
+        keyboard: [
+            ["WAEC"],
+            ["NECO"],
+            ["🔙 Back", "🏠 Home"]
+        ]
+    }
+};
 
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        module.exports = {
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            HOME_MENU,
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                BACK_HOME,
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    WALLET_MENU,
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        DATA_NETWORKS,
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            AIRTIME_NETWORKS,
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                ELECTRICITY_MENU,
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    CABLE_MENU,
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        EDUCATION_MENU
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        };
+module.exports = {
+    HOME_MENU,
+    BACK_HOME,
+    WALLET_MENU,
+    DATA_NETWORKS,
+    AIRTIME_NETWORKS,
+    ELECTRICITY_MENU,
+    CABLE_MENU,
+    EDUCATION_MENU
+};
