@@ -59,8 +59,18 @@ async function handleMessage(bot, msg) {
         return true;
     }
 
+<<<<<<< HEAD
     // AMOUNT
+=======
+    // AMOUNT & IMMEDIATE PURCHASE
+>>>>>>> ebca5e54a5f31ac8b9d1155120ce5f7a643afb6e
     if (state.state === "awaiting_airtime_amount") {
+
+        // Check for Back or Home navigation buttons
+        if (msg.text && (msg.text.includes("Back") || msg.text.includes("Home") || msg.text === "/start")) {
+            clearState(msg.from.id);
+            return false;
+        }
 
         const amount = Number(msg.text);
 
@@ -72,31 +82,32 @@ async function handleMessage(bot, msg) {
             return true;
         }
 
-        airtimeSessions[msg.from.id] = {
-            network: state.data.network,
-            phone: state.data.phone,
-            amount
-        };
+        const network = state.data.network;
+        const phone = state.data.phone;
 
+        // Clear state first so the user isn't trapped if something fails
         clearState(msg.from.id);
 
         await bot.sendMessage(
             msg.chat.id,
-            `🧾 *Review Purchase*
-
-📱 Phone: ${state.data.phone}
-💵 Amount: ₦${amount}
-
-Reply with:
-
-YES → Confirm
-NO → Cancel`,
-            {
-                parse_mode: "Markdown"
-            }
+            "⏳ Processing your airtime purchase..."
         );
 
-        setState(msg.from.id, "awaiting_airtime_confirmation");
+        // Execute purchase directly
+        const result = await buyAirtime(msg, network, phone, amount);
+
+        if (result && result.success) {
+            await bot.sendMessage(
+                msg.chat.id,
+                `✅ *Airtime Purchase Successful!*\n\n📱 Phone: ${phone}\n💵 Amount: ₦${amount}\n💬 Message: ${result.message || "Completed"}`,
+                { parse_mode: "Markdown" }
+            );
+        } else {
+            await bot.sendMessage(
+                msg.chat.id,
+                `❌ Purchase failed: ${result?.message || "Please try again later."}`
+            );
+        }
 
         return true;
     }

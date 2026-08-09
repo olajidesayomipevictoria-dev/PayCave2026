@@ -27,6 +27,7 @@ const bot = new TelegramBot(token, {
     polling: true
 });
 
+<<<<<<< HEAD
 // A second, non-polling bot client used ONLY to message customers on the
 // main customer-facing bot. BOT_TOKEN must be set in PayCave-Admin/.env
 // and must match the MAIN bot's token (the one customers actually chat
@@ -39,6 +40,8 @@ if (!notifyBot) {
     console.warn("⚠️ BOT_TOKEN not set — manual credits will NOT notify customers automatically.");
 }
 
+=======
+>>>>>>> ebca5e54a5f31ac8b9d1155120ce5f7a643afb6e
 const ADMIN_ID = Number(process.env.ADMIN_ID);
 
 console.log("✅ PayCave Admin Bot Started");
@@ -80,6 +83,7 @@ bot.on("message", async (msg) => {
 
     const current = session.get(chatId);
 
+<<<<<<< HEAD
     // Safeguard for multi-step flows if session clears or restarts
     if (current && current.action && current.action.startsWith("await_credit_")) {
         if (text === "🏠 Home" || text === "🔙 Back") {
@@ -88,6 +92,8 @@ bot.on("message", async (msg) => {
         }
     }
 
+=======
+>>>>>>> ebca5e54a5f31ac8b9d1155120ce5f7a643afb6e
     // 1. Handle Navigation & Static Menu Switches first
     switch (text) {
         case "🏠 Home":
@@ -174,6 +180,7 @@ bot.on("message", async (msg) => {
         case "📊 Transactions":
         return await handleTransactionsMenu(bot, msg);
 
+<<<<<<< HEAD
         case "💰 Credit Wallet":
             session.set(chatId, { action: "await_credit_telegram_id" });
             return bot.sendMessage(
@@ -181,6 +188,8 @@ bot.on("message", async (msg) => {
                 "Enter the customer's Telegram ID to credit their wallet:"
             );
 
+=======
+>>>>>>> ebca5e54a5f31ac8b9d1155120ce5f7a643afb6e
         case "💸 Refund Wallet Tx":
             session.set(chatId, { action: "await_refund_reference" });
             return bot.sendMessage(
@@ -234,6 +243,7 @@ bot.on("message", async (msg) => {
         }
     }
 
+<<<<<<< HEAD
     // ===============================
     // MANUAL CREDIT WALLET FLOW
     // ===============================
@@ -307,6 +317,8 @@ bot.on("message", async (msg) => {
         );
     }
 
+=======
+>>>>>>> ebca5e54a5f31ac8b9d1155120ce5f7a643afb6e
     // 2. Handle Edit Plan selection trigger (starts with ✏ )
     if (text.startsWith("✏ ")) {
         await data.openPlan(
@@ -414,6 +426,7 @@ bot.on("callback_query", async (query) => {
         });
 
         bot.answerCallbackQuery(query.id, { text: newState ? "Maintenance Enabled 🛠️" : "Maintenance Disabled 🟢" });
+<<<<<<< HEAD
     } else if (action === 'confirm_manual_credit') {
         const chatId = query.message.chat.id;
         const current = session.get(chatId);
@@ -471,6 +484,8 @@ bot.on("callback_query", async (query) => {
         const chatId = query.message.chat.id;
         session.clear(chatId);
         return bot.sendMessage(chatId, "❌ Credit cancelled.");
+=======
+>>>>>>> ebca5e54a5f31ac8b9d1155120ce5f7a643afb6e
     }
 
 });
