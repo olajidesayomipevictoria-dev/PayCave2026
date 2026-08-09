@@ -4,7 +4,7 @@ const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 
 const db = new sqlite3.Database(
-<<<<<<< HEAD
+
     path.resolve(__dirname, '../../database.sqlite'),
     (err) => {
         if (err) {
@@ -14,7 +14,7 @@ const db = new sqlite3.Database(
         }
     }
 );
-=======
+
         path.resolve(__dirname, '../../database.sqlite'),
             (err) => {
                     if (err) {
@@ -23,10 +23,10 @@ const db = new sqlite3.Database(
                                                     console.log('✅ Admin Database Connected to Main SQLite File');
                                                             }
                                                                 }
-                                                                );
+                                                                
 
 
->>>>>>> ebca5e54a5f31ac8b9d1155120ce5f7a643afb6e
+
 
 // ============================
 // CREATE TABLES

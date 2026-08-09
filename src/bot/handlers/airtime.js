@@ -59,11 +59,11 @@ async function handleMessage(bot, msg) {
         return true;
     }
 
-<<<<<<< HEAD
+
     // AMOUNT
-=======
+
     // AMOUNT & IMMEDIATE PURCHASE
->>>>>>> ebca5e54a5f31ac8b9d1155120ce5f7a643afb6e
+
     if (state.state === "awaiting_airtime_amount") {
 
         // Check for Back or Home navigation buttons
