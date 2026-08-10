@@ -27,7 +27,6 @@ const bot = new TelegramBot(token, {
     polling: true
 });
 
-
 // A second, non-polling bot client used ONLY to message customers on the
 // main customer-facing bot. BOT_TOKEN must be set in PayCave-Admin/.env
 // and must match the MAIN bot's token (the one customers actually chat
@@ -39,7 +38,6 @@ const notifyBot = process.env.BOT_TOKEN
 if (!notifyBot) {
     console.warn("⚠️ BOT_TOKEN not set — manual credits will NOT notify customers automatically.");
 }
-
 
 const ADMIN_ID = Number(process.env.ADMIN_ID);
 
@@ -81,16 +79,6 @@ bot.on("message", async (msg) => {
     console.log("BUTTON:", msg.text);
 
     const current = session.get(chatId);
-
-
-    // Safeguard for multi-step flows if session clears or restarts
-    if (current && current.action && current.action.startsWith("await_credit_")) {
-        if (text === "🏠 Home" || text === "🔙 Back") {
-            session.clear(chatId);
-            // route back home...
-        }
-    }
-
 
     // 1. Handle Navigation & Static Menu Switches first
     switch (text) {
@@ -178,14 +166,12 @@ bot.on("message", async (msg) => {
         case "📊 Transactions":
         return await handleTransactionsMenu(bot, msg);
 
-
         case "💰 Credit Wallet":
             session.set(chatId, { action: "await_credit_telegram_id" });
             return bot.sendMessage(
                 chatId,
                 "Enter the customer's Telegram ID to credit their wallet:"
             );
-
 
         case "💸 Refund Wallet Tx":
             session.set(chatId, { action: "await_refund_reference" });
@@ -240,6 +226,62 @@ bot.on("message", async (msg) => {
         }
     }
 
+    // ===============================
+    // BROADCAST FLOW HANDLER
+    // ===============================
+    if (current?.action === "awaiting_broadcast_text") {
+        const broadcastText = text;
+        session.clear(chatId);
+
+        const sqlite3 = require('sqlite3').verbose();
+        const path = require('path');
+        const dbPath = path.resolve(__dirname, '../database.sqlite');
+        const dbConn = new sqlite3.Database(dbPath);
+
+        dbConn.all(
+            `SELECT telegram_id FROM users WHERE status != 'BANNED'`,
+            async (err, users) => {
+                dbConn.close();
+
+                if (err || !users || users.length === 0) {
+                    return bot.sendMessage(chatId, "❌ No users found to broadcast to.");
+                }
+
+                if (!notifyBot) {
+                    return bot.sendMessage(
+                        chatId,
+                        "❌ Broadcast failed: main bot client is not configured (BOT_TOKEN missing in Admin .env)."
+                    );
+                }
+
+                let successCount = 0;
+                let failCount = 0;
+
+                await bot.sendMessage(chatId, `🚀 Broadcasting to ${users.length} users... Please wait.`);
+
+                for (const user of users) {
+                    try {
+                        await notifyBot.sendMessage(user.telegram_id, broadcastText, { parse_mode: 'Markdown' });
+                        successCount++;
+                    } catch (e) {
+                        failCount++;
+                    }
+
+                    // Helper delay function
+                    await new Promise((resolve) => setTimeout(resolve, 120));
+                }
+
+                await bot.sendMessage(
+                    chatId,
+                    `📢 *Broadcast Completed!*\n\n` +
+                    `✅ Successfully sent: ${successCount}\n` +
+                    `❌ Failed: ${failCount}`,
+                    { parse_mode: 'Markdown' }
+                );
+            }
+        );
+        return;
+    }
 
     // ===============================
     // MANUAL CREDIT WALLET FLOW
@@ -314,8 +356,6 @@ bot.on("message", async (msg) => {
         );
     }
 
-
-
     // 2. Handle Edit Plan selection trigger (starts with ✏ )
     if (text.startsWith("✏ ")) {
         await data.openPlan(
@@ -385,7 +425,7 @@ bot.on("callback_query", async (query) => {
     } else if (action === 'admin_ban_user') {
         await handleBanUserPrompt(bot, msg);
     } else if (action === 'admin_broadcast') {
-        await handleBroadcastPrompt(bot, msg);
+        await handleBroadcastPrompt(bot, msg, notifyBot, session);
     } else if (action === 'admin_transactions') {
         await handleTransactionsMenu(bot, msg);
     } else if (action === 'search_vtu_tx') {
@@ -423,7 +463,6 @@ bot.on("callback_query", async (query) => {
         });
 
         bot.answerCallbackQuery(query.id, { text: newState ? "Maintenance Enabled 🛠️" : "Maintenance Disabled 🟢" });
-
     } else if (action === 'confirm_manual_credit') {
         const chatId = query.message.chat.id;
         const current = session.get(chatId);
@@ -484,3 +523,5 @@ bot.on("callback_query", async (query) => {
     }
 
 });
+
+module.exports = bot;
