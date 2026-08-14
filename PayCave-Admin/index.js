@@ -12,12 +12,9 @@ const data = require('./handlers/data');
 
 const session = require('./session');
 
-const syncDataPlans = require('./services/syncDataPlans')
-const { handleUsersMenu, handleBanUserPrompt, handleBroadcastPrompt } = require('./src/admin/handlers/users');
-const { handleTransactionsMenu,handleSearchPrompt } = require('./src/admin/handlers/transactions');
-
-
-// Note: Ensure your database instance is required or imported here if it is in a separate file (e.g., const db = require('./database');)
+const syncDataPlans = require('./services/syncDataPlans');
+const { handleUsersMenu, handleUsersListPage, handleBanUserPrompt, handleBroadcastPrompt } = require('./src/admin/handlers/users');
+const { handleTransactionsMenu, handleSearchPrompt } = require('./src/admin/handlers/transactions');
 
 const db = require('../src/database/database.js');
 
@@ -27,10 +24,6 @@ const bot = new TelegramBot(token, {
     polling: true
 });
 
-// A second, non-polling bot client used ONLY to message customers on the
-// main customer-facing bot. BOT_TOKEN must be set in PayCave-Admin/.env
-// and must match the MAIN bot's token (the one customers actually chat
-// with) — NOT the admin bot token (ADMIN_BOT_TOKEN).
 const notifyBot = process.env.BOT_TOKEN
     ? new TelegramBot(process.env.BOT_TOKEN, { polling: false })
     : null;
@@ -164,7 +157,7 @@ bot.on("message", async (msg) => {
         case "👥 Users":
             return await handleUsersMenu(bot, msg, db);
         case "📊 Transactions":
-        return await handleTransactionsMenu(bot, msg);
+            return await handleTransactionsMenu(bot, msg);
 
         case "💰 Credit Wallet":
             session.set(chatId, { action: "await_credit_telegram_id" });
@@ -181,13 +174,11 @@ bot.on("message", async (msg) => {
             );
 
         case "⚙️ Settings":
-        const { SETTINGS_MENU } = require('./keyboard');
-        return await bot.sendMessage(msg.chat.id, "⚙️ **Admin Settings Panel**", {
-            parse_mode: 'Markdown',
-            ...SETTINGS_MENU
-        });
-
-
+            const { SETTINGS_MENU } = require('./keyboard');
+            return await bot.sendMessage(msg.chat.id, "⚙️ **Admin Settings Panel**", {
+                parse_mode: 'Markdown',
+                ...SETTINGS_MENU
+            });
     }
 
     if (current?.action === "await_refund_reference") {
@@ -267,7 +258,6 @@ bot.on("message", async (msg) => {
                         failCount++;
                     }
 
-                    // Helper delay function
                     await new Promise((resolve) => setTimeout(resolve, 120));
                 }
 
@@ -287,7 +277,6 @@ bot.on("message", async (msg) => {
     // MANUAL CREDIT WALLET FLOW
     // ===============================
 
-    // STEP 1: telegram id entered
     if (current?.action === "await_credit_telegram_id") {
         const telegramId = text.trim();
         const user = await db.getUser(telegramId);
@@ -313,7 +302,6 @@ bot.on("message", async (msg) => {
         );
     }
 
-    // STEP 2: amount entered
     if (current?.action === "await_credit_amount") {
         const amount = Number(text.trim());
 
@@ -329,7 +317,6 @@ bot.on("message", async (msg) => {
         );
     }
 
-    // STEP 3: reason entered -> confirm
     if (current?.action === "await_credit_reason") {
         const reason = text.trim().toLowerCase() === "skip" ? null : text.trim();
 
@@ -356,7 +343,6 @@ bot.on("message", async (msg) => {
         );
     }
 
-    // 2. Handle Edit Plan selection trigger (starts with ✏ )
     if (text.startsWith("✏ ")) {
         await data.openPlan(
             bot,
@@ -366,7 +352,6 @@ bot.on("message", async (msg) => {
         return;
     }
 
-    // 3. Handle Active Price Modification Input
     if (current && current.editingPlan) {
         const updated = await data.updatePrice(
             bot,
@@ -378,7 +363,6 @@ bot.on("message", async (msg) => {
         }
     }
 
-    // 4. Handle Category Selection Flow
     if (
         current &&
         current.network &&
@@ -421,7 +405,10 @@ bot.on("callback_query", async (query) => {
     }
 
     if (action === 'admin_users') {
-        await handleUsersMenu(bot, msg);
+        await handleUsersMenu(bot, msg, db);
+    } else if (action.startsWith('admin_users_list_')) {
+        const page = parseInt(action.replace('admin_users_list_', ''), 10) || 0;
+        await handleUsersListPage(bot, msg.chat.id, page, msg.message_id);
     } else if (action === 'admin_ban_user') {
         await handleBanUserPrompt(bot, msg);
     } else if (action === 'admin_broadcast') {
@@ -433,7 +420,6 @@ bot.on("callback_query", async (query) => {
     } else if (action === 'search_wallet_tx') {
         await handleSearchPrompt(bot, query, 'wallet');
     } else if (action === 'admin_back') {
-        // Return to home menu or previous view
         bot.deleteMessage(query.message.chat.id, query.message.message_id);
         bot.sendMessage(query.message.chat.id, "🏠 **Admin Home Menu**", { ...HOME_MENU });
     } else if (action === 'toggle_maintenance') {
@@ -521,7 +507,6 @@ bot.on("callback_query", async (query) => {
         session.clear(chatId);
         return bot.sendMessage(chatId, "❌ Credit cancelled.");
     }
-
 });
 
 module.exports = bot;

@@ -5,8 +5,6 @@ const path = require('path');
 
 const dbPath = path.resolve(__dirname, '../../../../database.sqlite');
 
-// Small helper: pause between sends so we don't hit Telegram's rate limits
-// (roughly 1 msg/sec per chat, ~30/sec overall across chats).
 function delay(ms) {
     return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -50,6 +48,7 @@ async function handleUsersMenu(bot, msg) {
                     parse_mode: 'Markdown',
                     reply_markup: {
                         inline_keyboard: [
+                            [{ text: '📋 View All Users', callback_data: 'admin_users_list_0' }],
                             [{ text: '🚫 Ban / Unban User', callback_data: 'admin_ban_user' }],
                             [{ text: '📢 Send Broadcast', callback_data: 'admin_broadcast' }]
                         ]
@@ -58,6 +57,88 @@ async function handleUsersMenu(bot, msg) {
             });
         }
     );
+}
+
+// =======================================
+// VIEW ALL USERS (PAGINATED)
+// =======================================
+
+const USERS_PER_PAGE = 10;
+
+async function handleUsersListPage(bot, chatId, page = 0, messageId = null) {
+    const db = new sqlite3.Database(dbPath);
+
+    db.get(`SELECT COUNT(*) as total FROM users`, (countErr, countRow) => {
+        if (countErr) {
+            db.close();
+            return bot.sendMessage(chatId, "❌ Failed to fetch users.");
+        }
+
+        const total = countRow ? countRow.total : 0;
+
+        if (total === 0) {
+            db.close();
+            return bot.sendMessage(chatId, "No users found yet.");
+        }
+
+        const totalPages = Math.max(1, Math.ceil(total / USERS_PER_PAGE));
+        const safePage = Math.min(Math.max(page, 0), totalPages - 1);
+        const offset = safePage * USERS_PER_PAGE;
+
+        db.all(
+            `SELECT telegram_id, username, first_name, balance, status
+             FROM users
+             ORDER BY id DESC
+             LIMIT ? OFFSET ?`,
+            [USERS_PER_PAGE, offset],
+            async (err, rows) => {
+                db.close();
+
+                if (err || !rows || rows.length === 0) {
+                    return bot.sendMessage(chatId, "❌ Failed to fetch users.");
+                }
+
+                let text = `👥 All Users (Page ${safePage + 1}/${totalPages}, Total: ${total})\n\n`;
+
+                rows.forEach((u, i) => {
+                    const name = u.first_name || u.username || "Unknown";
+                    const statusIcon = u.status === 'BANNED' ? '🚫 BANNED' : '✅ ACTIVE';
+                    text += `${offset + i + 1}. ${name} — ${statusIcon}\n` +
+                            `    ID: ${u.telegram_id}\n` +
+                            `    Balance: ₦${Number(u.balance).toLocaleString()}\n\n`;
+                });
+
+                const navRow = [];
+                if (safePage > 0) {
+                    navRow.push({ text: '⬅ Previous', callback_data: `admin_users_list_${safePage - 1}` });
+                }
+                if (safePage < totalPages - 1) {
+                    navRow.push({ text: 'Next ➡', callback_data: `admin_users_list_${safePage + 1}` });
+                }
+
+                const keyboard = {
+                    inline_keyboard: [
+                        ...(navRow.length ? [navRow] : []),
+                        [{ text: '🔙 Back', callback_data: 'admin_users' }]
+                    ]
+                };
+
+                if (messageId) {
+                    try {
+                        return await bot.editMessageText(text, {
+                            chat_id: chatId,
+                            message_id: messageId,
+                            reply_markup: keyboard
+                        });
+                    } catch (e) {
+                        // Fall through to send a fresh message if edit fails
+                    }
+                }
+
+                return bot.sendMessage(chatId, text, { reply_markup: keyboard });
+            }
+        );
+    });
 }
 
 // =======================================
@@ -114,18 +195,14 @@ async function handleBanUserPrompt(bot, msg) {
 }
 
 // =======================================
-// BROADCAST
+// BROADCAST (Using session action handler)
 // =======================================
-// IMPORTANT: `notifyBot` must be the client authenticated with the MAIN
-// customer bot's token (BOT_TOKEN), NOT the admin bot. Customers only have
-// a chat open with the main bot, so only that bot identity can message them.
 
 async function handleBroadcastPrompt(bot, msg, notifyBot, session) {
     const chatId = msg.chat.id;
 
     if (!notifyBot) {
         console.warn("⚠️ handleBroadcastPrompt called without notifyBot — broadcast will fail for all users.");
-        return bot.sendMessage(chatId, "❌ Broadcast failed: main bot client is not configured.");
     }
 
     session.set(chatId, { action: "awaiting_broadcast_text" });
@@ -140,6 +217,7 @@ async function handleBroadcastPrompt(bot, msg, notifyBot, session) {
 
 module.exports = {
     handleUsersMenu,
+    handleUsersListPage,
     handleBanUserPrompt,
     handleBroadcastPrompt
 };
